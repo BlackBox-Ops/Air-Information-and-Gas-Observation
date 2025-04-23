@@ -6,6 +6,8 @@
 #define DHTPIN 2
 #define DHTTYPE DHT22
 #define MQ2PIN A0
+#define ADC_RESOLUTION 4095.0 
+#define ADC_VOLTAGE_REF 3.3 
 
 class SensorHandler {
 public:
@@ -14,6 +16,9 @@ public:
     float readTemperature();
     float readHumidity();
     int readGas();
+    float readGasVoltage();
+    float readRs();
+    float calculateRatio(float Ro);
 
 private:
     DHT dht;
