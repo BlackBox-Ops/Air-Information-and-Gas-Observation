@@ -28,7 +28,6 @@ AIGO terdiri dari beberapa komponen utama:
 - **GUI Library:** Py.GUI / tkinter / PyQt / custom PyCanvas.
 - **Database:** SQLite / MySQL / TinyDB.
 - **Protokol:** MQTT, HTTP REST.
-- **RTOS:** FreeRTOS (opsional).
 - **ML Framework:** Scikit-learn / TensorFlow Lite (opsional).
 
 ## ⚙️ Cara Kerja Singkat
