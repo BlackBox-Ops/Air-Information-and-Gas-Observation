@@ -9,7 +9,6 @@
 - Penyimpanan data terstruktur dengan dukungan database lokal.
 - Integrasi dengan sistem kontrol (fan, alarm, LED) berdasarkan logika sensor.
 - Protokol komunikasi data menggunakan MQTT/HTTP.
-- Dukungan sistem operasi real-time (RTOS) untuk manajemen multitasking.
 - Potensi integrasi machine learning untuk prediksi tren kualitas udara.
 
 ## 💡 Arsitektur Sistem
