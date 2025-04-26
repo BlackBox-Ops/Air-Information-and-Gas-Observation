@@ -3,7 +3,7 @@
 #include <DHT.h>
 #include <MQUnifiedsensor.h>
 
-// Pin dan konfigurasi
+// Pin dan konfigurasi sensor MQ 6 
 #define DHTPIN 2
 #define DHTTYPE DHT11
 #define Board "Arduino UNO"
@@ -12,6 +12,11 @@
 #define Type "MQ-6"
 #define ADC_Bit_Resolution 10
 #define RatioMQ6CleanAir 10
+
+// bagian indikator 
+#define LedGreen  3
+#define LedYellow 4
+#define LedRed    5
 
 // Inisialisasi objek
 DHT dht(DHTPIN, DHTTYPE);
@@ -44,6 +49,10 @@ float bacaCH4() {
 }
 
 void setup() {
+  pinMode(LedGreen,  OUTPUT);
+  pinMode(LedYellow, OUTPUT);
+  pinMode(LedRed,OUTPUT);
+  
   lcd.init();
   lcd.backlight();
   dht.begin();
@@ -80,7 +89,7 @@ void loop() {
   if (isnan(suhu) || isnan(hum)) {
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("Sensor Error");
+    lcd.print("System Up...");
     delay(2000);
     return;
   }
