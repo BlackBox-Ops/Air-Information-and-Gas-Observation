@@ -32,7 +32,8 @@ void setup() {
 }
 
 void loop() {
-  MQ6.update();
-  MQ6.readSensor();
-  delay(500);
+  MQ6.update();      // Update data, the arduino will read the voltage from the analog pin
+  MQ6.readSensor();  // Sensor will read PPM concentration using the model, a and b values set previously or from the setup
+  MQ6.serialDebug(); // Will print the table on the serial port
+  delay(500);        //Sampling frequency
 }
