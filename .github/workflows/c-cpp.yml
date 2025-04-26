@@ -8,16 +8,18 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
-    - name: configure
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool
+    - name: Generate configure script
+      run: autoreconf -i
+    - name: Configure
       run: ./configure
-    - name: make
+    - name: Build
       run: make
-    - name: make check
+    - name: Run Tests
       run: make check
-    - name: make distcheck
-      run: make distcheck
+    - name: Check Distribution
