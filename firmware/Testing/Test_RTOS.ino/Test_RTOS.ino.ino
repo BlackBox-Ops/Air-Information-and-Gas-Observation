@@ -41,13 +41,6 @@ void bacaDHT(float &suhu, float &hum) {
   hum = dht.readHumidity();
 }
 
-// Fungsi membaca MQ6
-float bacaCH4() {
-  MQ6.update();
-  float ppm = MQ6.readSensor();  // membaca konsentrasi gas dalam ppm
-  return ppm;
-}
-
 void setup() {
   pinMode(LedGreen,  OUTPUT);
   pinMode(LedYellow, OUTPUT);
@@ -59,14 +52,13 @@ void setup() {
 
   // Setup MQ6
   MQ6.setRegressionMethod(1); // 1 = linear
-  MQ6.setA(2127.2); 
-  MQ6.setB(-2.526); 
   MQ6.init();
 
   float calcR0 = 0;
   for (int i = 1; i <= 10; i++) {
     MQ6.update();
     calcR0 += MQ6.calibrate(RatioMQ6CleanAir);
+    delay(500);
   }
   MQ6.setR0(calcR0 / 10);
   MQ6.serialDebug(false); // matikan debug supaya hemat serial
@@ -82,9 +74,20 @@ void setup() {
 }
 
 void loop() {
+  MQ6.update();
+  
   float suhu, hum;
   bacaDHT(suhu, hum);
-  float ch4 = bacaCH4();
+    
+  // --- Baca Gas 1 (misal: LPG) ---
+  MQ6.setA(2127.2); 
+  MQ6.setB(-2.526);
+  float ppm_gas1 = MQ6.readSensor();
+
+  // --- Baca Gas 2 (misal: Butane) ---
+  MQ6.setA(1009.2); 
+  MQ6.setB(-2.35);
+  float ppm_gas2 = MQ6.readSensor();
 
   if (isnan(suhu) || isnan(hum)) {
     lcd.clear();
@@ -110,8 +113,10 @@ void loop() {
   // Tampilkan gas CH4 di baris 1
   lcd.setCursor(0, 1);
   lcd.print("CH4:");
-  lcd.print(ch4, 1);
-  lcd.print(" ppm");
+  lcd.print(ppm_gas1, 1);
+  // lcd.print(" H10:");
+  // lcd.print(ppm_gas2, 1);
+  
 
   delay(2000); // tunda supaya mudah dibaca
 }
