@@ -96,7 +96,7 @@ void setup() {
 void loop() {
   unsigned long currentMillis = millis();
   static unsigned long prevReadTime = 0;
-  const unsigned long intervalRead = 2000;
+  const unsigned long intervalRead = 1000;
 
   // Pembacaan sensor setelah interval waktu tertentu
   if (currentMillis - prevReadTime >= intervalRead) {
@@ -114,7 +114,7 @@ void loop() {
       lcd.clear();
       lcd.setCursor(0, 0);
       lcd.print("Sensor Error");
-      delay(2000);
+      delay(1000);
       softReset(); // reset kalau error
       return;
     }
