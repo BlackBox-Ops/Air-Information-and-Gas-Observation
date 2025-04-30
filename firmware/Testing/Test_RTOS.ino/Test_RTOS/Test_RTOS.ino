@@ -2,6 +2,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
 #include <MQUnifiedsensor.h>
+#include <LowPower.h>
 
 /*------------------------------------------
   Konstanta & Konfigurasi Pin
@@ -15,10 +16,10 @@
 #define RatioMQ6CleanAir 10
 #define MQ_TYPE "MQ-6"
 
-// LED indikator
 #define LedGreen  3
 #define LedYellow 4
 #define LedRed    5
+#define BuzzerPin 6 // Pin buzzer aktif
 
 /*------------------------------------------
   Inisialisasi Objek
@@ -41,17 +42,18 @@ byte iconDrop[8] = {
 };
 
 /*------------------------------------------
-  Variabel Waktu (millis)
--------------------------------------------*/
-unsigned long prevReadTime = 0;
-const unsigned long intervalRead = 2000;  // Interval pembacaan (ms)
-
-/*------------------------------------------
-  Fungsi Membaca Sensor DHT11
+  Fungsi Membaca DHT11
 -------------------------------------------*/
 void bacaDHT(float &suhu, float &hum) {
   suhu = dht.readTemperature();
   hum = dht.readHumidity();
+}
+
+/*------------------------------------------
+  Fungsi Reset Software
+-------------------------------------------*/
+void softReset() {
+  asm volatile ("jmp 0");
 }
 
 /*------------------------------------------
@@ -61,27 +63,27 @@ void setup() {
   pinMode(LedGreen, OUTPUT);
   pinMode(LedYellow, OUTPUT);
   pinMode(LedRed, OUTPUT);
-  
+  // pinMode(BuzzerPin, OUTPUT); // Buzzer
+    
   lcd.init();
   lcd.backlight();
   dht.begin();
 
-  // Setup MQ6
-  MQ6.setRegressionMethod(1); 
+  MQ6.setRegressionMethod(1); // Linear mode
   MQ6.init();
 
-  // Kalibrasi awal MQ6
   float calcR0 = 0;
   for (int i = 0; i < 10; i++) {
     MQ6.update();
     calcR0 += MQ6.calibrate(RatioMQ6CleanAir);
-    delay(500); // delay diperbolehkan di setup
+    delay(500);
   }
   MQ6.setR0(calcR0 / 10);
   MQ6.serialDebug(false);
 
   lcd.createChar(0, iconThermo);
   lcd.createChar(1, iconDrop);
+
   lcd.setCursor(0, 0);
   lcd.print("Membaca Sensor");
   delay(2000);
@@ -89,33 +91,34 @@ void setup() {
 }
 
 /*------------------------------------------
-  Loop Utama dengan millis()
+  Loop Utama
 -------------------------------------------*/
 void loop() {
   unsigned long currentMillis = millis();
+  static unsigned long prevReadTime = 0;
+  const unsigned long intervalRead = 2000;
 
+  // Pembacaan sensor setelah interval waktu tertentu
   if (currentMillis - prevReadTime >= intervalRead) {
     prevReadTime = currentMillis;
 
     MQ6.update();
-
     float suhu, hum;
     bacaDHT(suhu, hum);
 
-    // MQ6 untuk gas LPG/CH4
-    MQ6.setA(2127.2); 
+    MQ6.setA(2127.2);
     MQ6.setB(-2.526);
     float ppm_gas1 = MQ6.readSensor();
 
-    // Validasi hasil DHT
     if (isnan(suhu) || isnan(hum)) {
       lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print("Error DHT...");
+      lcd.print("Sensor Error");
+      delay(2000);
+      softReset(); // reset kalau error
       return;
     }
 
-    // Tampilkan ke LCD
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.write(byte(0)); lcd.print(suhu, 1); lcd.print((char)223); lcd.print("C ");
@@ -124,7 +127,12 @@ void loop() {
     lcd.setCursor(0, 1);
     lcd.print("CH4:");
     lcd.print(ppm_gas1, 1);
-  }
 
-  // Tambahkan proses lain di sini (misalnya: tombol, kontrol kipas, dsb.)
+    // Matikan buzzer setelah sistem siap
+    // digitalWrite(BuzzerPin,LOW);
+
+    // Mode low power selama 1 detik setelah beberapa detik aktif
+    delay(1000);  // Menunggu 1 detik sebelum memasuki mode tidur
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);  // Tidur selama 8 detik untuk menghemat daya
+  }
 }
