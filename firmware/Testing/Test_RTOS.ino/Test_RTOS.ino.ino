@@ -9,9 +9,11 @@
 #define Board "Arduino UNO"
 #define Voltage_Resolution 5
 #define Pin A0
+#define pin A1 
 #define Type "MQ-6"
 #define ADC_Bit_Resolution 10
-#define RatioMQ6CleanAir 10
+#define RatioMQ6CleanAir   10
+#define RatioMQ131CleanAir 15
 
 // bagian indikator 
 #define LedGreen  3
@@ -21,7 +23,9 @@
 // Inisialisasi objek
 DHT dht(DHTPIN, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+
 MQUnifiedsensor MQ6(Board, Voltage_Resolution, ADC_Bit_Resolution, Pin, Type);
+MQUnifiedsensor MQ131(Board, Voltage_Resolution, ADC_Bit_Resolution, pin, Type);
 
 // Ikon Termometer (index 0)
 byte iconThermo[8] = {
@@ -61,8 +65,18 @@ void setup() {
     delay(500);
   }
   MQ6.setR0(calcR0 / 10);
-  MQ6.serialDebug(false); // matikan debug supaya hemat serial
 
+  // Setup MQ6
+  MQ131.init();
+  
+  for(int i = 1; i<=10; i ++)
+  {
+    MQ131.update(); 
+    calcR0 += MQ131.calibrate(RatioMQ131CleanAir);
+    delay(500);
+  }
+  MQ131.setR0(calcR0/10);
+  
   // Buat ikon khusus
   lcd.createChar(0, iconThermo);
   lcd.createChar(1, iconDrop);
@@ -74,6 +88,7 @@ void setup() {
 }
 
 void loop() {
+  // MQ6 Read 
   MQ6.update();
   
   float suhu, hum;
@@ -88,6 +103,17 @@ void loop() {
   MQ6.setA(1009.2); 
   MQ6.setB(-2.35);
   float ppm_gas2 = MQ6.readSensor();
+
+  // MQ131 Read
+  MQ131.update();
+
+  // -- Baca Gas 3 (Ozon)
+  MQ131.setRegressionMethod(1);
+  MQ131.setA(23.943); MQ131.setB(-1.11);
+
+  float ppm_gas3 = MQ131.readSensor();
+
+  MQ131.readSensorR0Rs();
 
   if (isnan(suhu) || isnan(hum)) {
     lcd.clear();
@@ -114,9 +140,8 @@ void loop() {
   lcd.setCursor(0, 1);
   lcd.print("CH4:");
   lcd.print(ppm_gas1, 1);
-  // lcd.print(" H10:");
-  // lcd.print(ppm_gas2, 1);
+  lcd.print(" 03:");
+  lcd.print(ppm_gas3, 1);
   
-
   delay(2000); // tunda supaya mudah dibaca
 }
