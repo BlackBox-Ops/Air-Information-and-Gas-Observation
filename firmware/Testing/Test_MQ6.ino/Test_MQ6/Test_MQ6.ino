@@ -69,8 +69,8 @@ void loop() {
   
   lcd.setCursor(0, 0);
   lcd.print("LPG:");
-  lcd.print(ppm_gas1, 1); // 1 digit di belakang koma
-  lcd.print("ppm");
+  lcd.print(ppm_gas1, 2); // 1 digit di belakang koma
+  lcd.print(" ppm");
 
   lcd.setCursor(0, 1);
   lcd.print("Butane:");

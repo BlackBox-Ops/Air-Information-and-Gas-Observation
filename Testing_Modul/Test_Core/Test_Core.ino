@@ -1,142 +1,106 @@
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include <DHT.h>
 #include <MQUnifiedsensor.h>
+#include <LiquidCrystal_I2C.h>
 
-// === Konstanta ===
-#define DHTPIN 2
-#define DHTTYPE DHT11
+#define Board               "Arduino Uno"
+#define Voltage_Resolution   5
+#define MQ6_PIN              A0
+#define MQ131_PIN            A1
+#define MQ6_TYPE             "MQ6"
+#define MQ131_TYPE           "MQ131"
+#define ADC_BIT_RESOLUTION   10
 
-#define BOARD "Arduino UNO"
-#define VOLTAGE_RESOLUTION 5
-#define ADC_RESOLUTION 10
+#define RatioMQ6CleanAir     10
+#define RatioMQ131CleanAir   15
 
-#define PIN_MQ6 A0
-#define PIN_MQ131 A1
+#define RelayPin              3
 
-#define TYPE_MQ6 "MQ-6"
-#define TYPE_MQ131 "MQ-131"
+MQUnifiedsensor MQ6(Board,Voltage_Resolution, ADC_BIT_RESOLUTION, MQ6_PIN, MQ6_TYPE);
+MQUnifiedsensor MQ131(Board,Voltage_Resolution, ADC_BIT_RESOLUTION, MQ131_PIN, MQ131_TYPE);
 
-#define RATIO_MQ6_CLEAN_AIR   10
-#define RATIO_MQ131_CLEAN_AIR 15
-
-#define LED_GREEN  3
-#define LED_YELLOW 4
-#define LED_RED    5
-
-#define INTERVAL_SENSOR 2000  // interval pembacaan sensor
-
-// === Objek ===
-DHT dht(DHTPIN, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-MQUnifiedsensor MQ6(BOARD, VOLTAGE_RESOLUTION, ADC_RESOLUTION, PIN_MQ6, TYPE_MQ6);
-MQUnifiedsensor MQ131(BOARD, VOLTAGE_RESOLUTION, ADC_RESOLUTION, PIN_MQ131, TYPE_MQ131);
 
-// === Variabel Global ===
-unsigned long lastReadTime = 0;
-float suhu = 0, hum = 0;
-float ppm_ch4 = 0, ppm_o3 = 0;
-
-// === Ikon LCD ===
-byte iconThermo[8] = {
-  B00100, B01010, B01010, B01110,
-  B01110, B11111, B11111, B01110
-};
-byte iconDrop[8] = {
-  B00100, B00100, B01010, B01010,
-  B10001, B10001, B10001, B01110
-};
-
-// === Fungsi Reusable ===
-void tampilkanIkon() {
-  lcd.createChar(0, iconThermo);
-  lcd.createChar(1, iconDrop);
-}
-
-float kalibrasiSensor(MQUnifiedsensor &sensor, float cleanAirRatio) {
-  float r0 = 0;
-  for (int i = 0; i < 10; i++) {
-    sensor.update();
-    r0 += sensor.calibrate(cleanAirRatio);
-    delay(100); // Tetap blocking saat setup
-  }
-  return r0 / 10.0;
-}
-
-void bacaSemuaSensor() {
-  // Baca DHT
-  suhu = dht.readTemperature();
-  hum = dht.readHumidity();
-
-  // Baca CH4 (MQ6)
-  MQ6.setA(2127.2);
-  MQ6.setB(-2.526);
-  MQ6.update();
-  ppm_ch4 = MQ6.readSensor();
-
-  // Baca O3 (MQ131)
-  MQ131.setA(23.943);
-  MQ131.setB(-1.11);
-  MQ131.update();
-  ppm_o3 = MQ131.readSensor();
-}
-
-void tampilkanLCD() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.write(byte(0)); lcd.print(suhu, 1); lcd.print((char)223); lcd.print(F("C "));
-  lcd.write(byte(1)); lcd.print(hum, 1); lcd.print(F("%"));
-
-  lcd.setCursor(0, 1);
-  lcd.print(F("CH4:")); lcd.print(ppm_ch4, 1);
-  lcd.print(F(" 03:")); lcd.print(ppm_o3, 1);
-}
-
-// === Setup ===
 void setup() {
-  pinMode(LED_GREEN, OUTPUT);
-  pinMode(LED_YELLOW, OUTPUT);
-  pinMode(LED_RED, OUTPUT);
-
+  Serial.begin(9600);
+  pinMode(RelayPin, OUTPUT);
+  
   lcd.init();
   lcd.backlight();
-  tampilkanIkon();
-
-  dht.begin();
-
-  MQ6.setRegressionMethod(1);
-  MQ6.init();
-  MQ6.setR0(kalibrasiSensor(MQ6, RATIO_MQ6_CLEAN_AIR));
-
-  MQ131.setRegressionMethod(1);
-  MQ131.init();
-  MQ131.setR0(kalibrasiSensor(MQ131, RATIO_MQ131_CLEAN_AIR));
-
-  lcd.setCursor(0, 0);
-  lcd.print(F("Membaca Sensor"));
-  delay(1500);
   lcd.clear();
+
+  lcd.setCursor(0,0);
+  lcd.print("Calibrating...");
+  Serial.print("Calibrating please wait");
+
+  MQ6.init();
+  MQ6.setRegressionMethod(1);
+  
+  MQ131.init();
+  MQ131.setRegressionMethod(1);
+
+  float MQ6calcR0 = 0, MQ131calcR0 = 0;
+  for (int i = 0; i <= 10; i++) {
+    MQ6.update();
+    MQ131.update();  
+
+    MQ6calcR0 += MQ6.calibrate(RatioMQ6CleanAir);
+    MQ131calcR0 += MQ131.calibrate(RatioMQ131CleanAir);
+  }
+  
+  MQ6.setR0(MQ6calcR0/20);
+  MQ131.setR0(MQ131calcR0/20);
+  Serial.println("done!.");
+
+  Serial.println("*********Values from MQ *********");
+  Serial.println("|  LPG  |  CH4 |  CL2  |  03   |");
+
+  digitalWrite(RelayPin,LOW);
+  delay(500);
+  digitalWrite(RelayPin,HIGH);
+  delay(500);
 }
 
-// === Loop Non-Blocking ===
 void loop() {
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastReadTime >= INTERVAL_SENSOR) {
-    lastReadTime = currentMillis;
+  MQ6.update();
+  MQ131.update();
 
-    bacaSemuaSensor();
+  /*
+   * Exponential regression
+   * Sensor|Gas    |a     |b
+   * MQ6   |LPG    |2127.2|-2.526
+   * MQ6   |CH4    |1009.2|-2.35
+   * MQ131 |CL2    |47.209|-1.186
+   * MQ131 |O3     |23.943|-1.11
+   */
+   MQ6.setA(2127.2); MQ6.setB(-2.526); // Konsentrasi Gas LPG
+   float LPG = MQ6.readSensor();
 
-    if (isnan(suhu) || isnan(hum)) {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print(F("Error DHT11..."));
-      return;
-    }
+   MQ6.setA(1009.2); MQ6.setB(-2.35); // Konsentrasi Gas CH4
+   float CH4 = MQ6.readSensor();
 
-    tampilkanLCD();
-  }
+   MQ131.setA(47.209); MQ131.setB(-1.186); // Konsentrasi Gas CL2
+   float CL2 = MQ131.readSensor();
 
-  // Tambahkan logika LED jika perlu
-  // contoh:
-  // digitalWrite(LED_GREEN, ppm_ch4 < 100 ? HIGH : LOW);
+   MQ131.setA(23.943); MQ131.setB(-1.11); // Konsentrasi Gas 03
+   float O3 = MQ131.readSensor();
+
+  Serial.print("|  "); Serial.print(LPG);
+  Serial.print(" | "); Serial.print(CH4);
+  Serial.print(" |  "); Serial.print(CL2);
+  Serial.print(" |  "); Serial.print(O3);
+  Serial.println(" |");
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("CH4:");
+  lcd.print(CH4, 2);
+  lcd.print("LPG:");
+  lcd.print(LPG, 2);
+
+  lcd.setCursor(0, 1);
+  lcd.print("CL2:");
+  lcd.print(CL2, 2);
+  lcd.print(" 03:");
+  lcd.print(O3, 2);
+  
+  delay(1000); //Sampling frequency
 }
