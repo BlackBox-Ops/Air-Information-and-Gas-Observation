@@ -104,16 +104,12 @@ void loop() {
 
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("CH4:");
-  lcd.print(CH4, 2);
-  lcd.print("LPG:");
-  lcd.print(LPG, 2);
+  lcd.print("CH4:"); lcd.print(CH4, 2);
+  lcd.print("LPG:"); lcd.print(LPG, 2);
 
   lcd.setCursor(0, 1);
-  lcd.print("CL2:");
-  lcd.print(CL2, 2);
-  lcd.print(" 03:");
-  lcd.print(O3, 2);
+  lcd.print("CL2:"); lcd.print(CL2, 2);
+  lcd.print(" 03:"); lcd.print(O3, 2);
   
   delay(1000); //Sampling frequency
 }
