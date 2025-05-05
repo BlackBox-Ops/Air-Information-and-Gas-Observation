@@ -1,3 +1,5 @@
+#include <Wire.h>
+#include <RTClib.h>
 #include <MQUnifiedsensor.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -17,12 +19,20 @@
 MQUnifiedsensor MQ6(Board,Voltage_Resolution, ADC_BIT_RESOLUTION, MQ6_PIN, MQ6_TYPE);
 MQUnifiedsensor MQ131(Board,Voltage_Resolution, ADC_BIT_RESOLUTION, MQ131_PIN, MQ131_TYPE);
 
+RTC_DS3231 rtc;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup() {
   Serial.begin(9600);
   pinMode(RelayPin, OUTPUT);
-  
+
+  Wire.begin();
+
+  if (!rtc.begin()){
+    lcd.print("RTC tidak ditemukan");
+    while (1);
+  }
+
   lcd.init();
   lcd.backlight();
   lcd.clear();
@@ -60,6 +70,9 @@ void setup() {
 }
 
 void loop() {
+  DateTime now = rtc.now();
+  float tempC = rtc.getTemperature();
+  
   MQ6.update();
   MQ131.update();
 
