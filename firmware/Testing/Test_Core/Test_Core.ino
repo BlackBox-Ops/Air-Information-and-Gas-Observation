@@ -2,6 +2,7 @@
 #include <RTClib.h>
 #include <MQUnifiedsensor.h>
 #include <LiquidCrystal_I2C.h>
+#include <DHT.h>
 
 #define Board               "Arduino Uno"
 #define Voltage_Resolution   5
@@ -16,17 +17,27 @@
 
 #define RelayPin              3
 
+
+#define DHTPIN               2
+#define DHTTYPE              DHT11
+
+DHT dht(DHTPIN, DHTTYPE); 
+
 MQUnifiedsensor MQ6(Board,Voltage_Resolution, ADC_BIT_RESOLUTION, MQ6_PIN, MQ6_TYPE);
 MQUnifiedsensor MQ131(Board,Voltage_Resolution, ADC_BIT_RESOLUTION, MQ131_PIN, MQ131_TYPE);
 
 RTC_DS3231 rtc;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
+unsigned long lastSwitch = 0;
+bool showGasScreen = true;
+
 void setup() {
   Serial.begin(9600);
   pinMode(RelayPin, OUTPUT);
 
   Wire.begin();
+  dht.begin();
 
   if (!rtc.begin()){
     lcd.print("RTC tidak ditemukan");
@@ -39,7 +50,7 @@ void setup() {
 
   lcd.setCursor(0,0);
   lcd.print("Calibrating...");
-  Serial.print("Calibrating please wait");
+  // Serial.print("Calibrating please wait");
 
   MQ6.init();
   MQ6.setRegressionMethod(1);
@@ -58,10 +69,10 @@ void setup() {
   
   MQ6.setR0(MQ6calcR0/20);
   MQ131.setR0(MQ131calcR0/20);
-  Serial.println("done!.");
+  // Serial.println("done!.");
 
-  Serial.println("*********Values from MQ *********");
-  Serial.println("|  LPG  |  CH4 |  CL2  |  03   |");
+  // Serial.println("*********Values from MQ *********");
+  // Serial.println("|  LPG  |  CH4 |  CL2  |  03   |");
 
   digitalWrite(RelayPin,LOW);
   delay(500);
@@ -71,10 +82,10 @@ void setup() {
 
 void loop() {
   DateTime now = rtc.now();
-  float tempC = rtc.getTemperature();
-  
-  MQ6.update();
-  MQ131.update();
+  MQ6.update(); MQ131.update();
+
+  float dhtTemp = dht.readTemperature();
+  float dhtHumi = dht.readHumidity();
 
   /*
    * Exponential regression
@@ -96,20 +107,38 @@ void loop() {
    MQ131.setA(23.943); MQ131.setB(-1.11); // Konsentrasi Gas 03
    float O3 = MQ131.readSensor();
 
-  Serial.print("|  "); Serial.print(LPG);
-  Serial.print(" | "); Serial.print(CH4);
-  Serial.print(" |  "); Serial.print(CL2);
-  Serial.print(" |  "); Serial.print(O3);
-  Serial.println(" |");
+  // Serial.print("|  "); Serial.print(LPG);
+  // Serial.print(" | "); Serial.print(CH4);
+  // Serial.print(" |  "); Serial.print(CL2);
+  // Serial.print(" |  "); Serial.print(O3);
+  // Serial.println(" |");
+    // Bergantian tampilkan layar tiap 3 detik
+  if (millis() - lastSwitch >= 3000) {
+    showGasScreen = !showGasScreen;
+    lastSwitch = millis();
+  }
 
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("CH4:"); lcd.print(CH4, 2);
-  lcd.print("LPG:"); lcd.print(LPG, 2);
+  if (showGasScreen) 
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("CH4:"); lcd.print(CH4, 2);
+    lcd.print("LPG:"); lcd.print(LPG, 2);
 
-  lcd.setCursor(0, 1);
-  lcd.print("CL2:"); lcd.print(CL2, 2);
-  lcd.print(" 03:"); lcd.print(O3, 2);
-  
-  delay(1000); //Sampling frequency
+    lcd.setCursor(0, 1);
+    if (now.hour() < 10)     lcd.print('0');
+    lcd.print(now.hour());   lcd.print(':');
+    if (now.minute() < 10)   lcd.print('0');
+    lcd.print(now.minute()); lcd.print(':');
+    if (now.second() < 10)   lcd.print('0');
+    lcd.print(now.second());
+  } 
+  else {
+    lcd.setCursor(0, 0);
+    lcd.print("T:"); lcd.print(dhtTemp, 1); lcd.print((char)223); lcd.print("C");
+    lcd.setCursor(0, 1);
+    lcd.print("H:"); lcd.print(dhtHumi, 1); lcd.print("%");
+  }
+
+  delay(500);
 }
