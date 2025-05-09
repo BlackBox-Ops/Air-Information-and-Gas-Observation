@@ -15,11 +15,11 @@
 #define RatioMQ6CleanAir     10
 #define RatioMQ131CleanAir   15
 
-#define RelayPin              3
+#define RelayPin             3
 
 
 #define DHTPIN               2
-#define DHTTYPE              DHT11
+#define DHTTYPE              DHT21
 
 DHT dht(DHTPIN, DHTTYPE); 
 
@@ -107,11 +107,6 @@ void loop() {
    MQ131.setA(23.943); MQ131.setB(-1.11); // Konsentrasi Gas 03
    float O3 = MQ131.readSensor();
 
-  // Serial.print("|  "); Serial.print(LPG);
-  // Serial.print(" | "); Serial.print(CH4);
-  // Serial.print(" |  "); Serial.print(CL2);
-  // Serial.print(" |  "); Serial.print(O3);
-  // Serial.println(" |");
     // Bergantian tampilkan layar tiap 3 detik
   if (millis() - lastSwitch >= 3000) {
     showGasScreen = !showGasScreen;
@@ -140,5 +135,5 @@ void loop() {
     lcd.print("H:"); lcd.print(dhtHumi, 1); lcd.print("%");
   }
 
-  delay(500);
+  delay(3000);
 }
